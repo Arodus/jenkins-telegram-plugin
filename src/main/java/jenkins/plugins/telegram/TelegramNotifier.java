@@ -47,6 +47,7 @@ public class TelegramNotifier extends Notifier {
     private boolean notifyFailure;
     private boolean notifyBackToNormal;
     private boolean notifyRepeatedFailure;
+    private boolean includeFailedTests;
     private boolean includeTestSummary;
     private CommitInfoChoice commitInfoChoice;
     private boolean includeCustomMessage;
@@ -111,6 +112,9 @@ public class TelegramNotifier extends Notifier {
     public boolean getNotifyBackToNormal() {
         return notifyBackToNormal;
     }
+    public boolean getIncludeFailedTests() {
+        return includeFailedTests;
+    }
 
     public boolean includeTestSummary() {
         return includeTestSummary;
@@ -132,7 +136,7 @@ public class TelegramNotifier extends Notifier {
     public TelegramNotifier(final String authToken, final String chatId, final String buildServerUrl,
                          final String sendAs, final boolean startNotification, final boolean notifyAborted, final boolean notifyFailure,
                          final boolean notifyNotBuilt, final boolean notifySuccess, final boolean notifyUnstable, final boolean notifyBackToNormal,
-                         final boolean notifyRepeatedFailure, final boolean includeTestSummary, CommitInfoChoice commitInfoChoice,
+                         final boolean notifyRepeatedFailure, final boolean includeTestSummary,final boolean includeFailedTests, CommitInfoChoice commitInfoChoice,
                          boolean includeCustomMessage, String customMessage) {
         super();
         this.authToken = authToken;
@@ -151,6 +155,7 @@ public class TelegramNotifier extends Notifier {
         this.commitInfoChoice = commitInfoChoice;
         this.includeCustomMessage = includeCustomMessage;
         this.customMessage = customMessage;
+        this.includeFailedTests = includeFailedTests;
     }
 
     public BuildStepMonitor getRequiredMonitorService() {
@@ -256,12 +261,13 @@ public class TelegramNotifier extends Notifier {
             boolean notifyBackToNormal = "true".equals(sr.getParameter("telegramNotifyBackToNormal"));
             boolean notifyRepeatedFailure = "true".equals(sr.getParameter("telegramNotifyRepeatedFailure"));
             boolean includeTestSummary = "true".equals(sr.getParameter("includeTestSummary"));
+            boolean includeFailedTests = "true".equals(sr.getParameter("includeFailedTests"));
             CommitInfoChoice commitInfoChoice = CommitInfoChoice.forDisplayName(sr.getParameter("telegramCommitInfoChoice"));
             boolean includeCustomMessage = "on".equals(sr.getParameter("includeCustomMessage"));
             String customMessage = sr.getParameter("customMessage");
             return new TelegramNotifier(token, chatId, buildServerUrl, sendAs, startNotification, notifyAborted,
                     notifyFailure, notifyNotBuilt, notifySuccess, notifyUnstable, notifyBackToNormal, notifyRepeatedFailure,
-                    includeTestSummary, commitInfoChoice, includeCustomMessage, customMessage);
+                    includeTestSummary,includeFailedTests, commitInfoChoice, includeCustomMessage, customMessage);
         }
 
         @Override

@@ -14,6 +14,7 @@ import hudson.scm.ChangeLogSet;
 import hudson.scm.ChangeLogSet.AffectedFile;
 import hudson.scm.ChangeLogSet.Entry;
 import hudson.tasks.test.AbstractTestResultAction;
+import hudson.tasks.test.TestResult;
 import hudson.triggers.SCMTrigger;
 import hudson.util.LogTaskListener;
 import org.apache.commons.lang.StringUtils;
@@ -70,7 +71,7 @@ public class ActiveNotifier implements FineGrainedNotifier {
         if (changes != null) {
             notifyStart(build, changes);
         } else {
-            notifyStart(build, getBuildStatusMessage(build, false, notifier.includeCustomMessage()));
+            notifyStart(build, getBuildStatusMessage(build, false, false,notifier.includeCustomMessage()));
         }
     }
 
@@ -112,7 +113,7 @@ public class ActiveNotifier implements FineGrainedNotifier {
                 || (result == Result.SUCCESS && notifier.getNotifySuccess())
                 || (result == Result.UNSTABLE && notifier.getNotifyUnstable())) {
             getTelegram(r).publish(getBuildStatusMessage(r, notifier.includeTestSummary(),
-                    notifier.includeCustomMessage()), getBuildColor(r));
+                    notifier.getIncludeFailedTests(),notifier.includeCustomMessage()), getBuildColor(r));
             if (notifier.getCommitInfoChoice().showAnything()) {
                 getTelegram(r).publish(getCommitList(r), getBuildColor(r));
             }
@@ -209,13 +210,13 @@ public class ActiveNotifier implements FineGrainedNotifier {
         }
     }
 
-    String getBuildStatusMessage(AbstractBuild r, boolean includeTestSummary, boolean includeCustomMessage) {
+    String getBuildStatusMessage(AbstractBuild r, boolean includeTestSummary,boolean includeFailedTests, boolean includeCustomMessage) {
         MessageBuilder message = new MessageBuilder(notifier, r);
         message.appendStatusMessage();
         message.appendDuration();
         message.appendOpenLink();
         if (includeTestSummary) {
-            message.appendTestSummary();
+            message.appendTestSummary(includeFailedTests);
         }
         if (includeCustomMessage) {
             message.appendCustomMessage();
@@ -252,7 +253,7 @@ public class ActiveNotifier implements FineGrainedNotifier {
                                     BACK_TO_NORMAL_STATUS_EMOTICON = "\u2705",
                                     STILL_FAILING_STATUS_EMOTICON = "\u203c",
                                     SUCCESS_STATUS_EMOTICON = "\u2705",
-                                    FAILURE_STATUS_EMOTICON = "\u203c",
+                                    FAILURE_STATUS_EMOTICON = "\u2757",
                                     ABORTED_STATUS_EMOTICON = "\u23f9",
                                     NOT_BUILT_STATUS_EMOTICON = "\u23ed",
                                     UNSTABLE_STATUS_EMOTICON = "\u26a0",
@@ -405,7 +406,7 @@ public class ActiveNotifier implements FineGrainedNotifier {
             message.append(this.escape(build.getProject().getFullDisplayName()));
             message.append(" - ");
             message.append(this.escape(build.getDisplayName()));
-            message.append(" ");
+            message.append("</b>\n");
             return this;
         }
 
@@ -425,21 +426,39 @@ public class ActiveNotifier implements FineGrainedNotifier {
                 durationString = build.getDurationString();
             }
             message.append(durationString);
-            message.append("</b>");
             return this;
         }
 
-        public MessageBuilder appendTestSummary() {
+        public MessageBuilder appendTestSummary(boolean includeFailedTests) {
             AbstractTestResultAction<?> action = this.build
                     .getAction(AbstractTestResultAction.class);
             if (action != null) {
                 int total = action.getTotalCount();
                 int failed = action.getFailCount();
                 int skipped = action.getSkipCount();
-                message.append("\nTest Status:\n");
+                message.append("\n<b>Test Status:</b>\n");
                 message.append("Passed: " + (total - failed - skipped));
                 message.append(", Failed: " + failed);
                 message.append(", Skipped: " + skipped);
+                if(includeFailedTests && failed > 0){
+                    message.append("\n<b>Failed Tests:</b>\n");
+                    List<? extends TestResult> failedTests = action.getFailedTests();
+                    for(int i = 0; i<failedTests.size();i++){
+                        TestResult result = failedTests.get(i);
+                        String testName = result.getName();
+                        if(testName.length() > 60) {
+                            String[] splittedTestName = testName.split("\\.");
+                            testName = "";
+                            for(int j = splittedTestName.length - 1;j>=0;j--){
+                                if(testName.length() + splittedTestName[j].length() + 1 > 60) break;
+                                testName = splittedTestName[j] + "." + testName;
+                            }
+                            testName = testName.substring(0,testName.length()-1);
+                        }
+                        message.append(escape(testName + "\n"));
+
+                    }
+                }
             } else {
                 message.append("\nNo Tests found.");
             }
