@@ -38,7 +38,7 @@
       <connection>scm:git:git://github.com/Arodus/jenkins-telegram-plugin.git</connection>
       <developerConnection>scm:git:git@github.com:Arodus/jenkins-telegram-plugin.git</developerConnection>
       <url>http://github.com/Arodus/jenkins-telegram-plugin</url>
-      <tag>HEAD</tag>
+      <tag>telegram-1.2.0</tag>
   </scm>
 
     <repositories>
