@@ -40,6 +40,7 @@ public class StandardTelegramService implements TelegramService {
         HttpClient client = getHttpClient();
         PostMethod post = new PostMethod(String.format(TELEGRAM_API_URL,token));
         post.getParams().setContentCharset("UTF-8");
+        //logger.log(Level.INFO,"Telegram post url: " + String.format(TELEGRAM_API_URL,token));
         post.setRequestBody(new NameValuePair[]{
                 new NameValuePair("chat_id",chatId),
                 new NameValuePair("parse_mode","HTML"),

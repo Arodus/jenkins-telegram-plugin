@@ -5,11 +5,11 @@ public class TelegramNotifierStub extends TelegramNotifier {
     public TelegramNotifierStub(String authToken, String chatId, String buildServerUrl,
                              String sendAs, boolean startNotification, boolean notifyAborted, boolean notifyFailure,
                              boolean notifyNotBuilt, boolean notifySuccess, boolean notifyUnstable, boolean notifyBackToNormal,
-                             boolean notifyRepeatedFailure, boolean includeTestSummary, CommitInfoChoice commitInfoChoice,
+                             boolean notifyRepeatedFailure, boolean includeTestSummary,boolean includeFailedTests, CommitInfoChoice commitInfoChoice,
                              boolean includeCustomMessage, String customMessage) {
         super(authToken, chatId, buildServerUrl, sendAs, startNotification, notifyAborted, notifyFailure,
                 notifyNotBuilt, notifySuccess, notifyUnstable, notifyBackToNormal, notifyRepeatedFailure,
-                includeTestSummary, commitInfoChoice, includeCustomMessage, customMessage);
+                includeTestSummary,includeFailedTests, commitInfoChoice, includeCustomMessage, customMessage);
     }
 
     public static class DescriptorImplStub extends TelegramNotifier.DescriptorImpl {
