@@ -1,8 +1,10 @@
 package jenkins.plugins.telegram.workflow;
 
 import com.google.inject.Inject;
+
 import hudson.AbortException;
 import hudson.Extension;
+
 import hudson.model.TaskListener;
 import jenkins.model.Jenkins;
 import jenkins.plugins.telegram.Messages;
@@ -13,10 +15,13 @@ import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepImpl;
 import org.jenkinsci.plugins.workflow.steps.AbstractSynchronousNonBlockingStepExecution;
 import org.jenkinsci.plugins.workflow.steps.StepContextParameter;
+
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 
+
 import javax.annotation.Nonnull;
+
 
 /**
  * Created by Sebastian on 06.06.2016.
@@ -83,7 +88,7 @@ public class TelegramSendStep extends AbstractStepImpl {
         }
     }
 
-    public static class TelegramSendStepExecution extends AbstractSynchronousNonBlockingStepExecution<Void> {
+    public static class TelegramSendStepExecution extends AbstractSynchronousNonBlockingStepExecution<Boolean> {
         private static final long serialVersionUID = 1L;
 
         @Inject
@@ -93,15 +98,17 @@ public class TelegramSendStep extends AbstractStepImpl {
         transient TaskListener listener;
 
         @Override
-        protected Void run() throws Exception {
+        protected Boolean run() throws Exception {
             Jenkins jenkins;
+            if(listener == null) return false;
+
             try {
-                jenkins = Jenkins.getInstance();
+                jenkins= Jenkins.getInstance();
+                if(jenkins == null) throw new NullPointerException("Jenkins instance is null");
             } catch (NullPointerException npe) {
                 listener.error(Messages.NotificationFailedWithException(npe));
-                return null;
+               return false;
             }
-
             TelegramNotifier.DescriptorImpl telegramDesc = jenkins.getDescriptorByType(TelegramNotifier.DescriptorImpl.class);
 
             String chatId = step.chatId != null ? step.chatId : telegramDesc.getChatId();
@@ -115,8 +122,9 @@ public class TelegramSendStep extends AbstractStepImpl {
                 throw new AbortException(Messages.NotificationFailed());
             } else if (!publishSuccess) {
                 listener.error(Messages.NotificationFailed());
+                return false;
             }
-            return null;
+            return true;
         }
 
         //streamline unit testing
