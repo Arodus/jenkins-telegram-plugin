@@ -114,12 +114,41 @@ public class ActiveNotifier implements FineGrainedNotifier {
                 || (result == Result.UNSTABLE && notifier.getNotifyUnstable())) {
             getTelegram(r).publish(getBuildStatusMessage(r, notifier.includeTestSummary(),
                     notifier.getIncludeFailedTests(),notifier.includeCustomMessage()), getBuildColor(r));
-            if (notifier.getCommitInfoChoice().showAnything()) {
-                getTelegram(r).publish(getCommitList(r), getBuildColor(r));
-            }
+
         }
     }
 
+
+
+
+
+    static String getBuildColor(AbstractBuild r) {
+        Result result = r.getResult();
+        if (result == Result.SUCCESS) {
+            return "good";
+        } else if (result == Result.FAILURE) {
+            return "danger";
+        } else {
+            return "warning";
+        }
+    }
+
+    String getBuildStatusMessage(AbstractBuild r, boolean includeTestSummary,boolean includeFailedTests, boolean includeCustomMessage) {
+        MessageBuilder message = new MessageBuilder(notifier, r);
+        message.appendStatusMessage();
+        message.appendDuration();
+        message.appendOpenLink();
+        if (includeTestSummary) {
+            message.appendTestSummary(includeFailedTests);
+        }
+        if (includeCustomMessage) {
+            message.appendCustomMessage();
+        }
+        if (notifier.getCommitInfoChoice().showAnything()){
+            message.appendCommitMessage(r);
+        }
+        return message.toString();
+    }
     String getChanges(AbstractBuild r, boolean includeCustomMessage) {
         if (!r.hasChangeSetComputed()) {
             logger.info("No change set computed...");
@@ -154,77 +183,63 @@ public class ActiveNotifier implements FineGrainedNotifier {
         }
         return message.toString();
     }
-
-    String getCommitList(AbstractBuild r) {
-        ChangeLogSet changeSet = r.getChangeSet();
-        List<Entry> entries = new LinkedList<Entry>();
-        for (Object o : changeSet.getItems()) {
-            Entry entry = (Entry) o;
-            logger.info("Entry " + o);
-            entries.add(entry);
-        }
-        if (entries.isEmpty()) {
-            logger.info("Empty change...");
-            Cause.UpstreamCause c = (Cause.UpstreamCause)r.getCause(Cause.UpstreamCause.class);
-            if (c == null) {
-                return "No Changes.";
-            }
-            String upProjectName = c.getUpstreamProject();
-            int buildNumber = c.getUpstreamBuild();
-            try {
-
-
-                AbstractProject project = Hudson.getInstance().getItemByFullName(upProjectName, AbstractProject.class);
-                AbstractBuild upBuild = (AbstractBuild) project.getBuildByNumber(buildNumber);
-                return getCommitList(upBuild);
-            }catch(NullPointerException npe){
-                return "No Changes.";
-            }
-        }
-        Set<String> commits = new HashSet<String>();
-        for (Entry entry : entries) {
-            StringBuffer commit = new StringBuffer();
-            CommitInfoChoice commitInfoChoice = notifier.getCommitInfoChoice();
-            if (commitInfoChoice.showTitle()) {
-                commit.append(entry.getMsg());
-            }
-            if (commitInfoChoice.showAuthor()) {
-                commit.append(" [").append(entry.getAuthor().getDisplayName()).append("]");
-            }
-            commits.add(commit.toString());
-        }
-        MessageBuilder message = new MessageBuilder(notifier, r);
-        message.append("Changes:\n- ");
-        message.append(StringUtils.join(commits, "\n- "));
-        return message.toString();
-    }
-
-    static String getBuildColor(AbstractBuild r) {
-        Result result = r.getResult();
-        if (result == Result.SUCCESS) {
-            return "good";
-        } else if (result == Result.FAILURE) {
-            return "danger";
-        } else {
-            return "warning";
-        }
-    }
-
-    String getBuildStatusMessage(AbstractBuild r, boolean includeTestSummary,boolean includeFailedTests, boolean includeCustomMessage) {
-        MessageBuilder message = new MessageBuilder(notifier, r);
-        message.appendStatusMessage();
-        message.appendDuration();
-        message.appendOpenLink();
-        if (includeTestSummary) {
-            message.appendTestSummary(includeFailedTests);
-        }
-        if (includeCustomMessage) {
-            message.appendCustomMessage();
-        }
-        return message.toString();
-    }
-
     public static class MessageBuilder {
+
+        public void appendCommitMessage(AbstractBuild r) {
+            message.append("\n");
+            message.append("<b>Changes:</b>\n");
+            message.append(getCommitList(r));
+        }
+        String getCommitList(AbstractBuild r) {
+            ChangeLogSet changeSet = r.getChangeSet();
+            List<Entry> entries = new LinkedList<Entry>();
+            for (Object o : changeSet.getItems()) {
+                Entry entry = (Entry) o;
+                logger.info("Entry " + o);
+                entries.add(entry);
+            }
+            if (entries.isEmpty()) {
+                logger.info("Empty change...");
+                Cause.UpstreamCause c = (Cause.UpstreamCause)r.getCause(Cause.UpstreamCause.class);
+                if (c == null) {
+                    return "No Changes.";
+                }
+                String upProjectName = c.getUpstreamProject();
+                int buildNumber = c.getUpstreamBuild();
+                try {
+
+
+                    AbstractProject project = Hudson.getInstance().getItemByFullName(upProjectName, AbstractProject.class);
+                    AbstractBuild upBuild = (AbstractBuild) project.getBuildByNumber(buildNumber);
+                    return getCommitList(upBuild);
+                }catch(NullPointerException npe){
+                    return "No Changes.";
+                }
+            }
+            Set<String> commits = new HashSet<String>();
+            for (Entry entry : entries) {
+                StringBuffer commit = new StringBuffer();
+                CommitInfoChoice commitInfoChoice = notifier.getCommitInfoChoice();
+                if (commitInfoChoice.showAuthor()) {
+                    String authorName = escape(entry.getAuthor().getDisplayName());
+                    commit.append("[").append(authorName).append("]\n");
+                }
+                if (commitInfoChoice.showTitle()) {
+                    String message = escape(entry.getMsg());
+                    if(message.startsWith("- ")) {
+                        message = message.substring(2);
+                    }
+                    if(message.startsWith("-")) {
+                        message = message.substring(1);
+                    }
+                    commit.append(message.replace("- ","\n- "));
+                }
+
+                commits.add(commit.toString());
+            }
+
+            return "\n- " + StringUtils.join(commits, "\n- ");
+        }
 
         private enum MessageStatus{
             STARTING,
@@ -436,7 +451,8 @@ public class ActiveNotifier implements FineGrainedNotifier {
                 int total = action.getTotalCount();
                 int failed = action.getFailCount();
                 int skipped = action.getSkipCount();
-                message.append("\n<b>Test Status:</b>\n");
+                message.append("\n");
+                message.append("<b>Test Status:</b>\n");
                 message.append("Passed: " + (total - failed - skipped));
                 message.append(", Failed: " + failed);
                 message.append(", Skipped: " + skipped);
